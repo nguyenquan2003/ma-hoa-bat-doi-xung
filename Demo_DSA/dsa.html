@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ví dụ về Chữ ký DSA</title>
+  </head>
+  <body>
+    <h1>Ví dụ về Chữ ký DSA</h1>
+    <textarea
+      id="message"
+      rows="4"
+      cols="50"
+      placeholder="Nhập thông điệp của bạn tại đây"
+    ></textarea
+    ><br /><br />
+    <button onclick="generateKeys()">Tạo Khóa</button><br /><br />
+    <button onclick="signMessage()">Ký Thông Điệp</button><br /><br />
+    <button onclick="verifySignature()">Xác Minh Chữ Ký</button><br /><br />
+
+    <p><strong>Khóa Riêng:</strong></p>
+    <pre id="privateKey"></pre>
+
+    <p><strong>Khóa Công Khai:</strong></p>
+    <pre id="publicKey"></pre>
+
+    <p><strong>Chữ Ký:</strong></p>
+    <pre id="signature"></pre>
+
+    <p><strong>Kết Quả Xác Minh:</strong></p>
+    <pre id="verificationResult"></pre>
+
+    <script>
+      let privateKey, publicKey, signature;
+
+      async function generateKeys() {
+        const keyPair = await window.crypto.subtle.generateKey(
+          {
+            name: "ECDSA",
+            namedCurve: "P-256",
+          },
+          true,
+          ["sign", "verify"]
+        );
+
+        privateKey = keyPair.privateKey;
+        publicKey = keyPair.publicKey;
+
+        document.getElementById("privateKey").textContent = JSON.stringify(
+          await exportKey(privateKey),
+          null,
+          2
+        );
+        document.getElementById("publicKey").textContent = JSON.stringify(
+          await exportKey(publicKey),
+          null,
+          2
+        );
+      }
+
+      async function signMessage() {
+        const message = document.getElementById("message").value;
+        const encodedMessage = new TextEncoder().encode(message);
+
+        signature = await window.crypto.subtle.sign(
+          {
+            name: "ECDSA",
+            hash: { name: "SHA-256" },
+          },
+          privateKey,
+          encodedMessage
+        );
+
+        document.getElementById("signature").textContent = Array.from(
+          new Uint8Array(signature)
+        )
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      async function verifySignature() {
+        const message = document.getElementById("message").value;
+        const encodedMessage = new TextEncoder().encode(message);
+
+        const isValid = await window.crypto.subtle.verify(
+          {
+            name: "ECDSA",
+            hash: { name: "SHA-256" },
+          },
+          publicKey,
+          signature,
+          encodedMessage
+        );
+
+        document.getElementById("verificationResult").textContent = isValid
+          ? "Chữ ký hợp lệ."
+          : "Chữ ký không hợp lệ.";
+      }
+
+      async function exportKey(key) {
+        const exported = await window.crypto.subtle.exportKey("jwk", key);
+        return exported;
+      }
+    </script>
+  </body>
+</html>
